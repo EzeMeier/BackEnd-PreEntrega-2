@@ -7,6 +7,9 @@ import {engine} from "express-handlebars";
 import {Server} from "socket.io";
 import { productsService } from "./persistence/index.js";
 import { connectDB } from "./config/dbConnection.js";
+import passport from "passport";
+import { initializePassport } from "./config/passport.config.js";
+import { config } from "./config/config.js";
 
 import { viewsRouter } from "./routes/views.routes.js";
 import { productsRouter } from "./routes/products.routes.js";
@@ -34,12 +37,6 @@ app.engine('.hbs', engine({extname: '.hbs'}));
 app.set('view engine', '.hbs');
 app.set('views', path.join(__dirname,"/views"));
 
-//routes
-app.use(viewsRouter);
-app.use("/api/products",productsRouter);
-app.use("/api/carts", cartsRouter);
-app.use("/api/sessions", sessionsRouter);
-
 //socket server
 io.on("connection", async(socket)=>{
     console.log("cliente conectado");
@@ -58,9 +55,20 @@ io.on("connection", async(socket)=>{
 app.use (session({
     store:MongoStore.create({
         ttl:3000,
-        mongoUrl:"mongodb+srv://meierezequiel:Mongodb123@codercluster.uuavg6o.mongodb.net/preEntrega2?retryWrites=true&w=majority"
+        mongoUrl:config.mongo.url
     }),
-    secret:"secretSessionCoder",
+    secret:config.server.secretSession,
     resave: true,
     saveUninitialized: true
 }));
+
+//configurar passport
+initializePassport();
+app.use(passport.initialize());
+app.use(passport.session());
+
+//routes
+app.use(viewsRouter);
+app.use("/api/products",productsRouter);
+app.use("/api/carts", cartsRouter);
+app.use("/api/sessions", sessionsRouter);

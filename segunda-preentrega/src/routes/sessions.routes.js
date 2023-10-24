@@ -1,35 +1,38 @@
 import { Router } from "express";
-import { usersModel } from "../persistence/mongo/models/users.model.js";
+import passport from "passport";
+import { config } from "../config/config.js";
 
 const router = Router();
 
-router.post("/signup", async(req,res)=>{
-    try {
-        const signupForm = req.body;
-        const result = await usersModel.create(signupForm);
-        res.render("loginView",{message:"Usuario registrado correctamente"});
-    } catch (error) {
-        res.render("signupView",{error:"No se pudo registrar el usuario"});
-    }
+
+router.post("/signup", passport.authenticate("signupLocalStrategy",{
+    failureRedirect:"/api/sessions/fail-signup"
+}) , async(req,res)=>{
+    res.render("loginView",{message:"Usuario registrado correctamente"});
 });
 
-router.post("/login", async(req,res)=>{
-    try {
-        const loginForm = req.body;
-        const user = await usersModel.findOne({email:loginForm.email});
-        if(!user){
-            return res.render("loginView",{error:"Este usuario no esta registrado"});
-        }
-        
-        if(user.password !== loginForm.password){
-            return res.render("loginView",{error:"Credenciales invalidas"});
-        }
-        
-        req.session.email = user.email;
-        res.redirect("/profile");
-    } catch (error) {
-        res.render("loginView",{error:"No se pudo iniciar sesion para este usuario"});
-    }
+router.get("/fail-signup",(req,res)=>{
+    res.render("signupView",{error:"No se pudo registrar el usuario"});
+});
+
+
+router.get("/signup-github", passport.authenticate("signupGithubStrategy"));
+
+router.get(config.github.callbackUrl, passport.authenticate("signupGithubStrategy",{
+    failureRedirect:"/api/sessions/fail-signup"
+}), (req,res)=>{
+    res.redirect("/profile");
+});
+
+
+router.post("/login", passport.authenticate("loginLocalStrategy",{
+    failureRedirect:"/api/sessions/fail-login"
+}) , async(req,res)=>{
+    res.redirect("/profile");
+});
+
+router.get("/fail-login",(req,res)=>{
+    res.render("loginView",{error:"No se pudo iniciar sesion para este usuario"});
 });
 
 router.get("/logout", async(req,res)=>{
